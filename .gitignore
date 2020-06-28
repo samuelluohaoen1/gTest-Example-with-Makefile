@@ -1,0 +1,5 @@
+/**/*.exe
+.vscode/
+/**/.vscode/
+protobuf-auto-gen/
+build/
