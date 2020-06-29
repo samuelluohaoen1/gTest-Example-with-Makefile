@@ -28,4 +28,10 @@ enum team_color_t {
 
 static constexpr const char* LOCAL_HOST = "127.0.0.1";
 
+const float Pi = 3.1415926;
+
+inline double to_radian(double deg) { return deg * Pi / 180.000;}
+inline double to_degree(double rad) { return rad * (180.000 / Pi);}
+
+
 #endif

@@ -24,6 +24,9 @@ private:
 
     void publish_robots_vinfo(const google::protobuf::RepeatedPtrField<SSL_DetectionRobot>& robots,
                              team_color_t team_color);
+
+    void on_receive_packet(std::size_t num_bytes_received,
+                           const boost::system::error_code& error);
     
 public:
 
@@ -31,6 +34,7 @@ public:
     ~GrSim_Vision();
 
     void receive_packet();
+    void async_receive_packet();
     arma::vec& get_robot_loc_vec(team_color_t color, int robot_id);
     arma::vec get_robot_location(team_color_t color, int robot_id);
     float get_robot_orientation(team_color_t color, int robot_id);
@@ -46,6 +50,7 @@ private:
     typedef boost::asio::io_service io_service;
     typedef boost::shared_ptr<GrSim_Vision> GrSim_Vision_ptr;
     typedef boost::shared_ptr<boost::thread> thread_ptr;
+    typedef boost::shared_ptr<boost::asio::deadline_timer> timer_ptr;
 
     team_color_t color;
     int id;
@@ -53,13 +58,42 @@ private:
     thread_ptr v_thread;
     boost::mutex mu;
     boost::condition_variable_any cond_init_finished;
+    unsigned int sample_period_ms = 50; // millisec
+    timer_ptr timer;
 
+    arma::vec vec_v = {0, 0};
+    float omega = 0.00;
+ 
     void vision_thread(udp::endpoint& v_ep);
+    void timer_expire_callback();
 
 public:
+    
     Sensor_System(team_color_t color, int robot_id, udp::endpoint& grsim_vision_ep);
+    // get raw vision data vector
     arma::vec& get_location_vector();
- };
+    
+    // Getter for \vec{d} and \theta (physics)
+    /* get net translational displacement (which is the 2D Location vector)
+       used to simulate the motor encoder vector addition cumulation */
+    arma::vec get_translational_displacement(); // unit: millimeter
+
+    /* get the rotational displacement  (which is the orientation)
+       used to simulate the EKF[encoder difference cumulation + IMU orientation estimation(another ekf within)]*/
+    float get_rotational_displacement(); // unit: degree // +degree left rotation (0~180) // -degree right rotation (0~-180)
+
+
+
+    // Getter for \vec{v} and \omega (physics)
+    /* get the translational velocity vector, simulating encoder sensor*/
+    arma::vec get_translational_velocity(); // unit: millimeter/millisecond == m/s
+
+    /* get the rotational speed, simulating EKF[Gyro within IMU + Encoder estimation]*/
+    float get_rotational_velocity(); // unit: degree/millisecond == deg/ms
+
+    // config the sample rate of the velocity trackers
+    void set_velocity_sample_rate(unsigned int rate_Hz); 
+};
 
 
 #endif

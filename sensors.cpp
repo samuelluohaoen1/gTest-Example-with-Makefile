@@ -1,11 +1,12 @@
 #include "sensors.hpp"
-
+#include "systime.hpp"
 
 
 using namespace std;
 using namespace arma;
 using namespace boost;
 using namespace boost::asio;
+using namespace boost::posix_time;
 using byte = unsigned char;
 
 
@@ -76,6 +77,39 @@ void GrSim_Vision::receive_packet() {
     }
 }
 
+void GrSim_Vision::on_receive_packet(std::size_t num_bytes_received,
+                                     const boost::system::error_code& error) 
+{    
+    if(error) {
+        std::cerr << "[Error Code] " << error.message() << std::endl;
+    }
+
+    std::string packet_string;
+    SSL_WrapperPacket packet;
+    google::protobuf::RepeatedPtrField<SSL_DetectionRobot> *blue_robots, *yellow_robots;
+
+    packet_string = std::string(receive_buffer->begin(), 
+                                    receive_buffer->begin() + num_bytes_received);
+
+    packet.ParseFromString(packet_string);
+    
+    publish_robots_vinfo(packet.detection().robots_blue(), BLUE);
+    publish_robots_vinfo(packet.detection().robots_yellow(), YELLOW);
+
+    // start the next receive cycle
+    this->async_receive_packet();
+}
+
+void GrSim_Vision::async_receive_packet() {
+    
+    socket->async_receive_from(asio::buffer(*receive_buffer), *ep,
+        boost::bind(&GrSim_Vision::on_receive_packet, this,
+        asio::placeholders::bytes_transferred, asio::placeholders::error)
+    );
+}
+
+
+
 vec& GrSim_Vision::get_robot_loc_vec(team_color_t color, int robot_id) {
     return color == BLUE ? GrSim_Vision::blue_loc_vecs[robot_id] 
                          : GrSim_Vision::yellow_loc_vecs[robot_id];
@@ -95,8 +129,8 @@ vec GrSim_Vision::get_robot_location(team_color_t color, int robot_id) {
 }
 
 float GrSim_Vision::get_robot_orientation(team_color_t color, int robot_id) {
-    return color == BLUE ? GrSim_Vision::blue_loc_vecs[robot_id](2) 
-                         : GrSim_Vision::yellow_loc_vecs[robot_id](2);
+    return color == BLUE ? to_degree( GrSim_Vision::blue_loc_vecs[robot_id](2) ) 
+                         : to_degree( GrSim_Vision::yellow_loc_vecs[robot_id](2) );
 }
 
 
@@ -131,12 +165,22 @@ std::ostream& operator<<(std::ostream& os, const arma::vec& v)
 
 void Sensor_System::vision_thread(udp::endpoint& v_ep) {
     io_service ios;
+    this->timer = timer_ptr(new deadline_timer(ios));
     this->vision = GrSim_Vision_ptr(new GrSim_Vision(ios, v_ep));
     cond_init_finished.notify_all();
+    /* sync way
     while(1) {
         // collecting vision data packets from grSim in a background-running thread
         this->vision->receive_packet(); 
-    } 
+    } */
+
+    // async way
+    this->vision->async_receive_packet();
+    this->timer->expires_from_now(milliseconds(sample_period_ms));
+    this->timer->async_wait(boost::bind(&Sensor_System::timer_expire_callback, this));
+    
+
+
     ios.run();
 }
 
@@ -155,4 +199,63 @@ Sensor_System::Sensor_System(team_color_t color, int robot_id, udp::endpoint& gr
 
 arma::vec& Sensor_System::get_location_vector() {
     return this->vision->get_robot_loc_vec(this->color, this->id);
+}
+
+
+// Getter for \vec{d} and \theta (physics)
+/* get net translational displacement (which is the 2D Location vector)
+    used to simulate the motor encoder vector addition cumulation */
+arma::vec Sensor_System::get_translational_displacement() {
+    return this->vision->get_robot_location(this->color, this->id);
+}
+
+/* get the rotational displacement  (which is the orientation)
+    used to simulate the EKF[encoder difference cumulation + IMU orientation estimation(another ekf within)]*/
+float Sensor_System::get_rotational_displacement() { 
+    // +degree left rotation (0~180)
+    // -degree right rotation (0~-180)
+    return this->vision->get_robot_orientation(this->color, this->id);
+}
+
+
+// Getter for \vec{v} and \omega (physics)
+/* get the translational velocity vector, simulating encoder sensor*/
+arma::vec Sensor_System::get_translational_velocity() {
+    return this->vec_v;
+}
+
+/* get the rotational speed, simulating EKF[Gyro within IMU + Encoder estimation]*/
+float Sensor_System::get_rotational_velocity() {
+    return this->omega;
+}
+
+
+// config the sample rate of the velocity trackers
+inline void Sensor_System::set_velocity_sample_rate(unsigned int rate_Hz) {
+    sample_period_ms = (1.00 / (double)rate_Hz) * 1000.000;
+}
+
+void Sensor_System::timer_expire_callback() {
+
+    // std::cout << millis() << std::endl; // debug
+
+    /* calc velocities */
+    // static here means stored on static memory, which preserves value even after func returns
+    static arma::vec prev_vec_d = {0, 0};
+    static float prev_theta = 0.000;
+
+    arma::vec curr_vec_d = this->get_translational_displacement();
+    float curr_theta = this->get_rotational_displacement();
+
+    this->mu.lock();
+    this->vec_v = (curr_vec_d - prev_vec_d) / (double)sample_period_ms;
+    this->omega = (curr_theta - prev_theta) / (double)sample_period_ms;
+
+    prev_vec_d = curr_vec_d;
+    prev_theta = curr_theta;
+    this->mu.unlock();
+
+
+    this->timer->expires_from_now(milliseconds(sample_period_ms));
+    this->timer->async_wait(boost::bind(&Sensor_System::timer_expire_callback, this));
 }
