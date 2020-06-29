@@ -21,6 +21,7 @@ PROTO_INC = -I$(PROTOBUF)
 PROTO_SRC = $(wildcard $(PROTOBUF)/*pb.cc) 
 PROTODEF_SRC = $(wildcard $(PROTO)/*.proto)
 
+
 ### compiler and compiling flags
 #COMPILER = g++
 COMPILER = clang++ -Qunused-arguments
@@ -55,12 +56,16 @@ $(BUILD):
 	mkdir $@
 
 
+### build the dependency file for tracking header files
+DEP_FLAG = -MMD -MP -MF"$(@:%.o=%.d)"
+
+
 ### make object files
 $(PROTOBUF)/%.o: %.cc 
 	$(COMPILER) -c $< $(FLAGS) -o $@
 
 $(BUILD)/%.o: %.cpp | $(BUILD)
-	$(COMPILER) -c $< $(FLAGS) -o $@
+	$(COMPILER) -c $< $(FLAGS) $(DEP_FLAG) -o $@ 
 
 
 ### generate & compile google protobuf libraries
@@ -80,10 +85,11 @@ protobuf:
 
 ### build targets
 $(TARGET): $(OBJS) $(PROTO_OBJS) | $(BUILD) 
-	@$(COMPILER) $(OBJS) $(PROTO_OBJS) $(FLAGS) -o $@  
+	@$(COMPILER) $(OBJS) $(PROTO_OBJS) $(FLAGS) -o $@ 
 	@echo ${GREEN}[build finished successfully! $(TARGET) generated!] ${NO_COLOR}
 
-
+### include the dependency file to track .hpp files' updates
+-include $(wildcard $(BUILD)/*.d)
 
 default:
 	@make --no-print-directory protobuf
@@ -94,11 +100,18 @@ clean:
 	rm -rf $(BUILD)
 	rm -rf $(PROTOBUF)
 	rm -f *.exe
+	rm -f *.d
+
+clean-build:
+	rm -rf $(BUILD)
+	rm -f *.exe
+	rm -f *.d
+
 
 clean-proto:
 	rm -rf $(PROTOBUF)
 
-.PHONY: clean clean-proto protobuf
+.PHONY: clean clean-build clean-proto protobuf
 
 ### stand alone build cmd example template for similar task:
 # g++ xxx.cpp -Ixxx_inc xxx_src/*.cc xxx_src/*.cpp 

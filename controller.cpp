@@ -1,14 +1,3 @@
-#include <iostream>
-#include <armadillo>
-#include <boost/asio.hpp>
-#include <boost/bind.hpp>
-#include <boost/thread/thread.hpp>
-#include <boost/array.hpp>
-
-#include "grSim_Packet.pb.h"
-#include "grSim_Commands.pb.h"
-#include "grSim_Replacement.pb.h"
-
 #include "controller.hpp"
 #include "systime.hpp"
 
@@ -23,6 +12,8 @@ GrSim_Console::GrSim_Console(io_service& io_srvs, udp::endpoint& endpoint) {
     this->socket = socket_ptr(new udp::socket(io_srvs));
     this->socket->open(udp::v4());
 }
+
+GrSim_Console::~GrSim_Console() {}
 
 void GrSim_Console::send_command(bool is_team_yellow, int id, 
                     float upper_left_wheel_speed, float lower_left_wheel_speed,
