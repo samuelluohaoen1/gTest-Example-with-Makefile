@@ -22,11 +22,13 @@ int main(int argc, char **argv) {
         // std::cout << sensors.get_location_vector() << std::endl;
         std::cout // << sensors.get_translational_displacement() << " "
                   // << sensors.get_rotational_displacement() << " " 
-                  << sensors.get_rotational_velocity() << " "
+                  // << sensors.get_rotational_velocity() << " "
+                  << sensors.get_translational_velocity() << " "
                   << std::endl;
 
         // console.send_command(false, 0, -20, -20, 10, 10, 0, 0, false);
-        console.send_command(false, 0, -10, -10, -10, -10, 0, 0, false);
+        // console.send_command(false, 0, -10, -10, -10, -10, 0, 0, false);
+        console.send_command(false, 0, -5, -5, 5, 5, 0, 0, false);
         delay(10);
     }
 

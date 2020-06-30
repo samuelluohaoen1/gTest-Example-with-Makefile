@@ -15,8 +15,8 @@ TARGET = vfirm.exe
 
 
 ### source and include path
-CPP_INC = 
-CPP_SRC = $(wildcard *.cpp) 
+CPP_INC = -Iinc
+CPP_SRC = $(wildcard *.cpp) $(wildcard src/*.cpp)
 PROTO_INC = -I$(PROTOBUF) 
 PROTO_SRC = $(wildcard $(PROTOBUF)/*pb.cc) 
 PROTODEF_SRC = $(wildcard $(PROTO)/*.proto)
