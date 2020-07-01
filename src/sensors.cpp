@@ -159,7 +159,9 @@ std::ostream& operator<<(std::ostream& os, const arma::vec& v)
     int num_rows = arma::size(v).n_rows;
     os << "<";
     for(int i = 0; i < num_rows; i++) {
-        os <<  v(i);
+        if(v(i) > -0.00001 && v(i) < 0.00001) os << 0.000;
+        else os <<  v(i);
+        
         if(i != num_rows - 1) os << ", ";
     }
     os << ">";
@@ -184,8 +186,7 @@ void Sensor_System::vision_thread(udp::endpoint& v_ep) {
     this->timer->expires_from_now(milliseconds(sample_period_ms));
     this->timer->async_wait(boost::bind(&Sensor_System::timer_expire_callback, this));
     
-
-
+    // To-do : multithread async + check speed difference != 0
     ios.run();
 }
 
@@ -265,7 +266,7 @@ void Sensor_System::timer_expire_callback() {
     // std::cout << millis() << std::endl; // debug
 
     /* calc velocities */
-    
+
     arma::vec curr_vec_d = this->get_translational_displacement();
     float curr_theta = this->get_rotational_displacement();
 

@@ -16,9 +16,9 @@ GrSim_Console::GrSim_Console(io_service& io_srvs, udp::endpoint& endpoint) {
 GrSim_Console::~GrSim_Console() {}
 
 void GrSim_Console::send_command(bool is_team_yellow, int id, 
-                   // float upper_left_wheel_speed, float lower_left_wheel_speed,
-                   // float lower_right_wheel_speed, float upper_right_wheel_speed, 
-                    
+                    float upper_left_wheel_speed, float lower_left_wheel_speed,
+                    float lower_right_wheel_speed, float upper_right_wheel_speed, 
+                   // float x, float y, float omega, 
                     float kick_speed_x, float kick_speed_y, bool spinner) 
 {
     grSim_Packet packet;
@@ -30,11 +30,15 @@ void GrSim_Console::send_command(bool is_team_yellow, int id,
 
     grSim_Robot_Command* command = packet.mutable_commands()->add_robot_commands();
     command->set_id(id);
-    command->set_wheelsspeed(false);
-    // command->set_wheel1(upper_left_wheel_speed); // upper_left
-    // command->set_wheel2(lower_left_wheel_speed); // lower_left
-    // command->set_wheel3(lower_right_wheel_speed); // lower_right
-    // command->set_wheel4(upper_right_wheel_speed); // upper_right
+    command->set_wheelsspeed(true);
+
+    command->set_wheel1(upper_left_wheel_speed); // upper_left
+    command->set_wheel2(lower_left_wheel_speed); // lower_left
+    command->set_wheel3(lower_right_wheel_speed); // lower_right
+    command->set_wheel4(upper_right_wheel_speed); // upper_right
+    // command->set_veltangent(x);
+    // command->set_velnormal(y);
+    // command->set_velangular(omega);
 
     command->set_kickspeedx(kick_speed_x);
     command->set_kickspeedz(kick_speed_y);

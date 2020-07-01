@@ -44,18 +44,22 @@ int main(int argc, char **argv) {
     // console.send_command(false, 0, 10, 10, 10, 10, 0, 0, false);
     delay(300);
 
-    while(1) {
-        // std::cout << sensors.get_location_vector() << std::endl;
-        std::cout << sensors.get_translational_displacement() << " "
-                  << sensors.get_translational_velocity() << " "
-                  // << sensors.get_rotational_displacement() << " " 
-                  // << sensors.get_rotational_velocity() << " "
-                  << std::endl;
+    double m1, m2, m3, m4;
 
-        // console.send_command(false, 0, -20, -20, 10, 10, 0, 0, false);
-        // console.send_command(false, 0, -10, -10, -10, -10, 0, 0, false);
-        console.send_command(false, 0, 0, -10, 0, 10, 0, 0, false);
-        delay(10);
+    while(1) {
+        std::cin >> m1 >> m2 >> m3 >> m4;
+        int t0 = millis();
+        while(millis() - t0 < 1000) {
+            console.send_command(false, 0, m1, m2, m3, m4, 0, 0, false);
+            std::cout << sensors.get_translational_displacement() << " "
+                  << sensors.get_translational_velocity() << " "
+                  << sensors.get_rotational_displacement() << " " 
+                  << sensors.get_rotational_velocity() << " "
+                  << std::endl;
+            delay(10);
+        }
+        t0 = millis();
+        while(millis() - t0 < 100) console.send_command(false, 0, 0, 0, 0, 0, 0, 0, false);
     }
 
 /*s

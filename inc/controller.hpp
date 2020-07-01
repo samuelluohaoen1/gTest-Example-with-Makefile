@@ -25,7 +25,8 @@ public:
                       float upper_left_wheel_speed, 
                       float lower_left_wheel_speed,
                       float lower_right_wheel_speed, 
-                      float upper_right_wheel_speed, 
+                      float upper_right_wheel_speed,
+                      // float x, float y, float omega, 
                       float kick_speed_x, float kick_speed_y, 
                       bool spinner);
 };

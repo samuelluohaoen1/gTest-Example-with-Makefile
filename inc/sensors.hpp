@@ -60,7 +60,7 @@ private:
     thread_ptr v_thread;
     boost::mutex mu;
     boost::condition_variable_any cond_init_finished;
-    unsigned int sample_period_ms = 50; // millisec
+    unsigned int sample_period_ms = 100; // millisec
     timer_ptr timer;
 
     arma::vec init_loc = {0, 0};
