@@ -33,5 +33,11 @@ const float Pi = 3.1415926;
 inline double to_radian(double deg) { return deg * Pi / 180.000;}
 inline double to_degree(double rad) { return rad * (180.000 / Pi);}
 
+extern arma::vec unit_vec_x;  // definition in common.cpp
+extern arma::vec unit_vec_y;  // definition in common.cpp
+
+arma::mat rotation_matrix_2D(double angle_degree);
+arma::mat change_basis_matrix_2D(arma::vec vx, arma::vec vy) ;
+
 
 #endif

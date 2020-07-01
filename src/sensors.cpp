@@ -18,15 +18,19 @@ void GrSim_Vision::publish_robots_vinfo(
     const google::protobuf::RepeatedPtrField<SSL_DetectionRobot>& robots,
     team_color_t team_color) 
 {
-    
+    /*
+     * x, y reversed due to global vision system views from the right hand side-wall view
+     * which needs to be transformed to the viewing vector starting from goal of our side to
+     * goal of opponent side 
+     */
     for(auto& bot : robots) {
         mu.lock();
         if(team_color == BLUE) {
-            blue_loc_vecs[bot.robot_id()] = {bot.pixel_x(), bot.pixel_y(), bot.orientation()};
+            blue_loc_vecs[bot.robot_id()] = {-bot.y(), bot.x(), bot.orientation()};
             // print_robot_vinfo(bot); // for debugging
         }
         if(team_color == YELLOW) {
-            yellow_loc_vecs[bot.robot_id()] = {bot.x(), bot.y(), bot.orientation()};
+            yellow_loc_vecs[bot.robot_id()] = {-bot.y(), bot.x(), bot.orientation()};
             // print_robot_vinfo(bot); // for debugging
         }
         mu.unlock();
@@ -116,6 +120,7 @@ vec& GrSim_Vision::get_robot_loc_vec(team_color_t color, int robot_id) {
 }
 
 vec GrSim_Vision::get_robot_location(team_color_t color, int robot_id) {
+    
     if(color == BLUE) {
         vec location = {GrSim_Vision::blue_loc_vecs[robot_id](0), 
                         GrSim_Vision::blue_loc_vecs[robot_id](1)};
@@ -197,19 +202,37 @@ Sensor_System::Sensor_System(team_color_t color, int robot_id, udp::endpoint& gr
     mu.unlock();
 }
 
-arma::vec& Sensor_System::get_location_vector() {
+
+// unsorted raw vector
+arma::vec& Sensor_System::get_raw_location_vector() {
     return this->vision->get_robot_loc_vec(this->color, this->id);
 }
 
 
-// Getter for \vec{d} and \theta (physics)
-/* get net translational displacement (which is the 2D Location vector)
-    used to simulate the motor encoder vector addition cumulation */
-arma::vec Sensor_System::get_translational_displacement() {
-    return this->vision->get_robot_location(this->color, this->id);
+void Sensor_System::init() {
+    // set the current location as the (0,0) location vector for this robot
+    init_loc = this->vision->get_robot_location(this->color, this->id);
+    
+    vec prev_vec_d = {0, 0};
+    prev_theta = 0.000;
 }
 
-/* get the rotational displacement  (which is the orientation)
+
+/*** All methods below returns coordinate relative to robot's own body frame ***/
+
+// Getter for \vec{d} and \theta (physics)
+/* get net translational displacement (which is the 2D Location vector relative to robot's body reference frame)
+    used to simulate the motor encoder vector addition cumulation */
+arma::vec Sensor_System::get_translational_displacement() {
+    mat rot = rotation_matrix_2D(get_rotational_displacement());
+    vec body_frame_x = rot * unit_vec_x;
+    vec body_frame_y = rot * unit_vec_y;
+    mat change_basis = change_basis_matrix_2D(body_frame_x, body_frame_y);
+    vec loc_in_world_frame = (this->vision->get_robot_location(this->color, this->id) - init_loc);
+    return change_basis * loc_in_world_frame;
+}
+
+/* get the rotational displacement in degrees (which is the orientation)
     used to simulate the EKF[encoder difference cumulation + IMU orientation estimation(another ekf within)]*/
 float Sensor_System::get_rotational_displacement() { 
     // +degree left rotation (0~180)
@@ -235,15 +258,14 @@ inline void Sensor_System::set_velocity_sample_rate(unsigned int rate_Hz) {
     sample_period_ms = (1.00 / (double)rate_Hz) * 1000.000;
 }
 
+
+// callback that calculates velocities
 void Sensor_System::timer_expire_callback() {
 
     // std::cout << millis() << std::endl; // debug
 
     /* calc velocities */
-    // static here means stored on static memory, which preserves value even after func returns
-    static arma::vec prev_vec_d = {0, 0};
-    static float prev_theta = 0.000;
-
+    
     arma::vec curr_vec_d = this->get_translational_displacement();
     float curr_theta = this->get_rotational_displacement();
 

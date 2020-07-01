@@ -5,6 +5,8 @@
 
 
 class GrSim_Vision { 
+    // coordinate data are relative to reverted global vision coordinate
+
 private:   
     typedef boost::asio::ip::udp udp;
     typedef boost::asio::io_service io_service;
@@ -61,8 +63,11 @@ private:
     unsigned int sample_period_ms = 50; // millisec
     timer_ptr timer;
 
+    arma::vec init_loc = {0, 0};
     arma::vec vec_v = {0, 0};
     float omega = 0.00;
+    arma::vec prev_vec_d = {0, 0};
+    float prev_theta = 0.000;
  
     void vision_thread(udp::endpoint& v_ep);
     void timer_expire_callback();
@@ -70,9 +75,13 @@ private:
 public:
     
     Sensor_System(team_color_t color, int robot_id, udp::endpoint& grsim_vision_ep);
-    // get raw vision data vector
-    arma::vec& get_location_vector();
+    // get raw vision data vector, unsorted
+    arma::vec& get_raw_location_vector();
     
+    void init();
+
+    /*** All methods below returns coordinate relative to robot's own body frame ***/
+
     // Getter for \vec{d} and \theta (physics)
     /* get net translational displacement (which is the 2D Location vector)
        used to simulate the motor encoder vector addition cumulation */
@@ -81,8 +90,6 @@ public:
     /* get the rotational displacement  (which is the orientation)
        used to simulate the EKF[encoder difference cumulation + IMU orientation estimation(another ekf within)]*/
     float get_rotational_displacement(); // unit: degree // +degree left rotation (0~180) // -degree right rotation (0~-180)
-
-
 
     // Getter for \vec{v} and \omega (physics)
     /* get the translational velocity vector, simulating encoder sensor*/
