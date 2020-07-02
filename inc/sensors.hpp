@@ -68,6 +68,9 @@ private:
     float omega = 0.00;
     arma::vec prev_vec_d = {0, 0};
     float prev_theta = 0.000;
+    unsigned int prev_millis = 0;
+    unsigned int prev_millis2 = 0;
+    bool is_first_time = true;
  
     void vision_thread(udp::endpoint& v_ep);
     void timer_expire_callback();
@@ -81,6 +84,8 @@ public:
     void init();
 
     /*** All methods below returns coordinate relative to robot's own body frame ***/
+
+    void set_init_displacement();
 
     // Getter for \vec{d} and \theta (physics)
     /* get net translational displacement (which is the 2D Location vector)

@@ -159,14 +159,16 @@ std::ostream& operator<<(std::ostream& os, const arma::vec& v)
     int num_rows = arma::size(v).n_rows;
     os << "<";
     for(int i = 0; i < num_rows; i++) {
-        if(v(i) > -0.00001 && v(i) < 0.00001) os << 0.000;
-        else os <<  v(i);
-        
+        os <<  v(i);
         if(i != num_rows - 1) os << ", ";
     }
     os << ">";
     return os;
 }
+
+// ==================================================================================================== //
+
+// Gorgeous divide line between two different classes :)
 
 // ==================================================================================================== //
 
@@ -186,7 +188,6 @@ void Sensor_System::vision_thread(udp::endpoint& v_ep) {
     this->timer->expires_from_now(milliseconds(sample_period_ms));
     this->timer->async_wait(boost::bind(&Sensor_System::timer_expire_callback, this));
     
-    // To-do : multithread async + check speed difference != 0
     ios.run();
 }
 
@@ -211,15 +212,19 @@ arma::vec& Sensor_System::get_raw_location_vector() {
 
 
 void Sensor_System::init() {
-    // set the current location as the (0,0) location vector for this robot
-    init_loc = this->vision->get_robot_location(this->color, this->id);
-    
+    set_init_displacement();
     vec prev_vec_d = {0, 0};
     prev_theta = 0.000;
+    is_first_time = true;
 }
 
 
 /*** All methods below returns coordinate relative to robot's own body frame ***/
+
+void Sensor_System::set_init_displacement() {
+    // set the current location as the (0,0) location vector for this robot
+    init_loc = this->vision->get_robot_location(this->color, this->id);
+}
 
 // Getter for \vec{d} and \theta (physics)
 /* get net translational displacement (which is the 2D Location vector relative to robot's body reference frame)
@@ -245,6 +250,8 @@ float Sensor_System::get_rotational_displacement() {
 // Getter for \vec{v} and \omega (physics)
 /* get the translational velocity vector, simulating encoder sensor*/
 arma::vec Sensor_System::get_translational_velocity() {
+    /* measurement taken in a concurrently running thread, 
+     * returned by copy so no need to worry about mutex locks */
     return this->vec_v;
 }
 
@@ -263,7 +270,6 @@ inline void Sensor_System::set_velocity_sample_rate(unsigned int rate_Hz) {
 // callback that calculates velocities
 void Sensor_System::timer_expire_callback() {
 
-    // std::cout << millis() << std::endl; // debug
 
     /* calc velocities */
 
@@ -271,14 +277,42 @@ void Sensor_System::timer_expire_callback() {
     float curr_theta = this->get_rotational_displacement();
 
     this->mu.lock();
-    this->vec_v = (curr_vec_d - prev_vec_d) / (double)sample_period_ms;
-    this->omega = (curr_theta - prev_theta) / (double)sample_period_ms;
 
-    prev_vec_d = curr_vec_d;
-    prev_theta = curr_theta;
+    if(is_first_time) {
+        prev_vec_d = curr_vec_d;
+        prev_theta = curr_theta;
+        prev_millis = millis();
+        prev_millis2 = millis();
+        is_first_time = false;
+        // start the next timer cycle
+        this->timer->expires_from_now(milliseconds(sample_period_ms));
+        this->timer->async_wait(boost::bind(&Sensor_System::timer_expire_callback, this));
+        this->mu.unlock(); // don't forget to unlock before function returns!
+        return;
+    }
+
+    double zero_thresh = 0.001;
+
+    arma::vec disp_diff = curr_vec_d - prev_vec_d;
+    // std::cout << disp_diff << std::endl; // debug
+    if( !(disp_diff(0) >= -zero_thresh && disp_diff(0) <= zero_thresh &&
+       disp_diff(1) >= -zero_thresh && disp_diff(1) <= zero_thresh) ){ 
+        // if delta is too small to be meaningful
+        this->vec_v = (disp_diff) / (millis() - prev_millis);
+        prev_vec_d = curr_vec_d;
+        prev_millis = millis();
+    }
+    
+    double angle_diff = curr_theta - prev_theta;
+    if(!(angle_diff >= -zero_thresh && angle_diff <= zero_thresh)) {
+        this->omega = (angle_diff) / (millis() - prev_millis2);    
+        prev_theta = curr_theta;
+        prev_millis2 = millis();
+    }
+
     this->mu.unlock();
 
-
+    // start the next timer cycle
     this->timer->expires_from_now(milliseconds(sample_period_ms));
     this->timer->async_wait(boost::bind(&Sensor_System::timer_expire_callback, this));
 }

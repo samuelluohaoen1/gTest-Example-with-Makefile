@@ -41,21 +41,21 @@ int main(int argc, char **argv) {
     delay(1000); 
     sensors.init();
 
-    // console.send_command(false, 0, 10, 10, 10, 10, 0, 0, false);
-    delay(300);
 
     double m1, m2, m3, m4;
 
     while(1) {
         std::cin >> m1 >> m2 >> m3 >> m4;
+        // sensors.set_init_displacement();
         int t0 = millis();
         while(millis() - t0 < 1000) {
             console.send_command(false, 0, m1, m2, m3, m4, 0, 0, false);
+            
             std::cout << sensors.get_translational_displacement() << " "
                   << sensors.get_translational_velocity() << " "
                   << sensors.get_rotational_displacement() << " " 
                   << sensors.get_rotational_velocity() << " "
-                  << std::endl;
+                  << std::endl; 
             delay(10);
         }
         t0 = millis();

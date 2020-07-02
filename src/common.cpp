@@ -21,8 +21,6 @@ arma::mat rotation_matrix_2D(double angle_degree) {
     return rot;
 }
 
-
-
 // from standard basis [(1,0), (0,1)] to basis [\vec{vx}, \vec{vy}]relative to std basis
 arma::mat change_basis_matrix_2D(arma::vec vx, arma::vec vy) {
     mat P_inv = {{vx(0), vy(0)},
