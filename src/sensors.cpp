@@ -172,24 +172,7 @@ std::ostream& operator<<(std::ostream& os, const arma::vec& v)
 
 // ==================================================================================================== //
 
-void Sensor_System::vision_thread(udp::endpoint& v_ep) {
-    io_service ios;
-    this->timer = timer_ptr(new deadline_timer(ios));
-    this->vision = GrSim_Vision_ptr(new GrSim_Vision(ios, v_ep));
-    cond_init_finished.notify_all();
-    /* sync way
-    while(1) {
-        // collecting vision data packets from grSim in a background-running thread
-        this->vision->receive_packet(); 
-    } */
 
-    // async way
-    this->vision->async_receive_packet();
-    this->timer->expires_from_now(milliseconds(sample_period_ms));
-    this->timer->async_wait(boost::bind(&Sensor_System::timer_expire_callback, this));
-    
-    ios.run();
-}
 
 Sensor_System::Sensor_System(team_color_t color, int robot_id, udp::endpoint& grsim_vision_ep) {
     this->color = color;
@@ -202,6 +185,26 @@ Sensor_System::Sensor_System(team_color_t color, int robot_id, udp::endpoint& gr
     mu.lock();
     cond_init_finished.wait(mu);
     mu.unlock();
+}
+
+void Sensor_System::vision_thread(udp::endpoint& v_ep) {
+    io_service ios;
+    this->timer = timer_ptr(new deadline_timer(ios));
+    this->vision = GrSim_Vision_ptr(new GrSim_Vision(ios, v_ep));
+    cond_init_finished.notify_all();
+    /* sync way
+    while(1) {
+        // collecting vision data packets from grSim in a background-running thread
+        this->vision->receive_packet(); 
+        // ....
+    } */
+
+    // async way
+    this->vision->async_receive_packet();
+    this->timer->expires_from_now(milliseconds(sample_period_ms));
+    this->timer->async_wait(boost::bind(&Sensor_System::timer_expire_callback, this));
+    
+    ios.run();
 }
 
 
@@ -270,6 +273,7 @@ inline void Sensor_System::set_velocity_sample_rate(unsigned int rate_Hz) {
 // callback that calculates velocities
 void Sensor_System::timer_expire_callback() {
 
+    // Optional To-do: add a low pass filter (queue to get data list, pop oldest and push latest to keep the buffer size small)
 
     /* calc velocities */
 
