@@ -156,10 +156,12 @@ arma::vec* GrSim_Vision::get_robots_loc_vecs(team_color_t color) {
 
 std::ostream& operator<<(std::ostream& os, const arma::vec& v)
 {
+    char fmt_str[15]; // not so important size, greater than printed str size is fine, use magic number here 
     int num_rows = arma::size(v).n_rows;
     os << "<";
     for(int i = 0; i < num_rows; i++) {
-        os <<  v(i);
+        sprintf(fmt_str, "%8.3lf", v(i));
+        os << std::string(fmt_str);
         if(i != num_rows - 1) os << ", ";
     }
     os << ">";
@@ -231,7 +233,8 @@ void Sensor_System::set_init_displacement() {
 
 // Getter for \vec{d} and \theta (physics)
 /* get net translational displacement (which is the 2D Location vector relative to robot's body reference frame)
-    used to simulate the motor encoder vector addition cumulation */
+    used to simulate the motor encoder vector addition cumulation 
+    unit: mm */
 arma::vec Sensor_System::get_translational_displacement() {
     mat rot = rotation_matrix_2D(get_rotational_displacement());
     vec body_frame_x = rot * unit_vec_x;
@@ -242,25 +245,28 @@ arma::vec Sensor_System::get_translational_displacement() {
 }
 
 /* get the rotational displacement in degrees (which is the orientation)
-    used to simulate the EKF[encoder difference cumulation + IMU orientation estimation(another ekf within)]*/
+    used to simulate the EKF[encoder difference cumulation + IMU orientation estimation(another ekf within)]
+   unit: degree*/
 float Sensor_System::get_rotational_displacement() { 
     // +degree left rotation (0~180)
     // -degree right rotation (0~-180)
-    return this->vision->get_robot_orientation(this->color, this->id);
+    return this->vision->get_robot_orientation(this->color, this->id); 
 }
 
 
 // Getter for \vec{v} and \omega (physics)
-/* get the translational velocity vector, simulating encoder sensor*/
+/* get the translational velocity vector, simulating encoder sensor
+   unit: mm/s */
 arma::vec Sensor_System::get_translational_velocity() {
     /* measurement taken in a concurrently running thread, 
      * returned by copy so no need to worry about mutex locks */
-    return this->vec_v;
+    return this->vec_v * 1000.00; // convert from m/s to mm/s
 }
 
-/* get the rotational speed, simulating EKF[Gyro within IMU + Encoder estimation]*/
+/* get the rotational speed, simulating EKF[Gyro within IMU + Encoder estimation]
+   unit: degree/s */
 float Sensor_System::get_rotational_velocity() {
-    return this->omega;
+    return this->omega * 1000.00;
 }
 
 
@@ -279,6 +285,7 @@ void Sensor_System::timer_expire_callback() {
 
     arma::vec curr_vec_d = this->get_translational_displacement();
     float curr_theta = this->get_rotational_displacement();
+    if(curr_theta < 0.000) curr_theta = 360 + curr_theta;
 
     this->mu.lock();
 
@@ -295,23 +302,30 @@ void Sensor_System::timer_expire_callback() {
         return;
     }
 
-    double zero_thresh = 0.001;
-
+    
     arma::vec disp_diff = curr_vec_d - prev_vec_d;
     // std::cout << disp_diff << std::endl; // debug
-    if( !(disp_diff(0) >= -zero_thresh && disp_diff(0) <= zero_thresh &&
-       disp_diff(1) >= -zero_thresh && disp_diff(1) <= zero_thresh) ){ 
+    if( disp_diff(0) >= -zero_thresh && disp_diff(0) <= zero_thresh &&
+       disp_diff(1) >= -zero_thresh && disp_diff(1) <= zero_thresh && cnt1 < cnt_thresh){ 
+        cnt1++;
+    }
+    else {
         // if delta is too small to be meaningful
         this->vec_v = (disp_diff) / (millis() - prev_millis);
         prev_vec_d = curr_vec_d;
         prev_millis = millis();
+        cnt1 = 0;
     }
     
     double angle_diff = curr_theta - prev_theta;
-    if(!(angle_diff >= -zero_thresh && angle_diff <= zero_thresh)) {
+    if(angle_diff >= -zero_thresh && angle_diff <= zero_thresh && cnt2 < cnt_thresh) {
+       cnt2++;
+    }
+    else {
         this->omega = (angle_diff) / (millis() - prev_millis2);    
         prev_theta = curr_theta;
         prev_millis2 = millis();
+        cnt2 = 0;
     }
 
     this->mu.unlock();

@@ -61,6 +61,8 @@ private:
     boost::mutex mu;
     boost::condition_variable_any cond_init_finished;
     unsigned int sample_period_ms = 100; // millisec
+    double zero_thresh = 0.001;
+    unsigned int cnt_thresh = 5; 
     timer_ptr timer;
 
     arma::vec init_loc = {0, 0};
@@ -70,6 +72,7 @@ private:
     float prev_theta = 0.000;
     unsigned int prev_millis = 0;
     unsigned int prev_millis2 = 0;
+    unsigned int cnt1 = 0, cnt2 = 0;
     bool is_first_time = true;
  
     void vision_thread(udp::endpoint& v_ep);
@@ -105,7 +108,14 @@ public:
 
     // config the sample rate of the velocity trackers
     void set_velocity_sample_rate(unsigned int rate_Hz); 
+    inline void set_velocity_zero_thresh(unsigned int zero_thresh) {
+        this->zero_thresh = zero_thresh;
+    }
+    inline void set_velocity_cnt_thresh(unsigned int cnt_thresh) {
+        this->cnt_thresh = cnt_thresh;
+    }
 };
 
+// To-do: add ball-latched sensor
 
 #endif

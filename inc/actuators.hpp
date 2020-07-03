@@ -49,6 +49,12 @@ private:
     unsigned int ctrl_period_ms = 10; // milliseconds  
     timer_ptr timer;
 
+    arma::vec unit_vec_A = {0, 0}; // left-upper direction
+    arma::vec unit_vec_B = {0, 0}; // right upper direction
+    double max_trans = 0.00;
+    double max_rot = 0.00;
+    bool param_loaded = false;
+
     void send_cmd_thread(udp::endpoint& c_ep);
     void timer_expire_callback();
 
@@ -61,6 +67,8 @@ public:
     bool dribbler_on = false;
 
     Actuator_System(team_color_t color, int robot_id, udp::endpoint& grsim_console_ep);
+    void load_robot_params(arma::vec left_vec, arma::vec right_vec, 
+                           double max_trans_mms, double max_rotat_ds);
     void set_ctrl_freq(float freq_Hz);
     void set_ctrl_period(float period_ms);
 
@@ -79,9 +87,13 @@ public:
         kick_speed_y = speed_y; 
     }
     
-
     void stop();
-    
+    void rotate(float angular_velocity); 
+    void move(arma::vec vec_2d); // cartesian vector
+    void move(float angle, float speed); // polor coord
+
+    /* Note: when coupled with pid, move is called by mobilize & sprint
+     */
 
 
 };

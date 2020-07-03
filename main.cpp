@@ -9,11 +9,18 @@ using namespace boost::asio;
 using namespace arma;
 typedef boost::asio::ip::udp udp;
 
+
+/* Some constants:
+ * motor max speed around 416 rpm at 1N*m torque load
+ * 416 rpm ~= 43.56 rad/s ~= 2496 degree/s
+ */
+
+
 double millis_wrapper() { return (double)millis();}
 
 int main(int argc, char **argv) {
 
-
+ 
 
 /*
     PID_Controller<double> pid_test(0.00, 1.00, 0.00);
@@ -35,6 +42,9 @@ int main(int argc, char **argv) {
     
     Sensor_System sensors(BLUE, 0, grsim_ssl_vision_ep);
     Actuator_System actuators(BLUE, 0, grsim_console_ep);
+    actuators.load_robot_params(arma::vec("-1 1"),
+                                arma::vec( "1 1"),
+                                0.00, 0.00);
 
     delay(500); 
     sensors.init();

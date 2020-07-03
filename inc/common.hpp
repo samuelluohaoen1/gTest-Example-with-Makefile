@@ -40,4 +40,10 @@ arma::mat rotation_matrix_2D(double angle_degree);
 arma::mat change_basis_matrix_2D(arma::vec vx, arma::vec vy) ;
 
 
+using range_t = std::pair<double, double>; 
+
+double map(double value, range_t from, range_t to);
+arma::vec map(arma::vec value, range_t from, range_t to);
+void map2(arma::vec& value, range_t from, range_t to);
+
 #endif
