@@ -17,6 +17,7 @@ Linux, recommended enviroment: Ubuntu 18.04 or above
 * grSim with customized setting:
 * google protobuffer library
 * c++ armadillo library 
+* c++ boost library
 
 
 
@@ -41,3 +42,44 @@ Linux, recommended enviroment: Ubuntu 18.04 or above
 3. Open the README.md file and follow the install instructions there
 4. Follow the instructions for C++
 5. This might take a while
+
+
+
+##### C++ Armadillo library
+
+Download the latest version and follow the README.md
+
+http://arma.sourceforge.net/download.html
+
+In the linux installation section in README.md:
+
+* ignore the first 2 steps if your already have gcc and cmake installed
+
+* in step3 in README.md, "Ensure LAPACK and BLAS (or preferably OpenBLAS) are installed on your system." use the following
+
+  * ```bash
+    sudo apt install cmake libopenblas-dev liblapack-dev libarpack2-dev libsuperlu-dev
+    ```
+
+* Then for step4 ~ 6, cd into the armadillo directory, run the following
+
+  * ```bash
+    cmake .
+    ```
+
+  * ```bash
+    make	
+    ```
+
+  * ```bash
+    sudo make install		
+    ```
+
+
+
+##### C++ boost library
+
+```bash
+sudo apt-get install libboost-all-dev
+```
+
