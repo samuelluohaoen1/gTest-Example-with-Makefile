@@ -72,6 +72,7 @@ public:
     void set_ctrl_freq(float freq_Hz);
     void set_ctrl_period(float period_ms);
 
+    // unit: rad/s
     inline void set_wheels_speeds(float upper_left, float lower_left, 
                                   float lower_right, float upper_right) {
         wheel_upper_left_vel = upper_left;

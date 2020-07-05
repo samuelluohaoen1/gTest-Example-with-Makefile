@@ -12,7 +12,7 @@ typedef boost::asio::ip::udp udp;
 
 /* Some constants:
  * motor max speed around 416 rpm at 1N*m torque load
- * 416 rpm ~= 43.56 rad/s ~= 2496 degree/s
+ * 416 rpm ~= 43.56 rad/s 
  */
 
 
