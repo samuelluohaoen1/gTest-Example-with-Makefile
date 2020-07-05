@@ -5,7 +5,7 @@ Simulated firmware io(input: sensors / output: actuators) using the grSim simula
 
 ## Install Instructions
 
-* [Install Dependencies](./installl.md)
+* [Install Dependencies](./install.md)
 
 
 
